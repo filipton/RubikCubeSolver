@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using TwoPhaseSolver;
 
 namespace RubikCubeSolver
 {
@@ -65,50 +66,36 @@ namespace RubikCubeSolver
 		static void Main(string[] args)
 		{
 			//INITALIZE DEAFULT COLORS
-			//KOCIEMBA COLORS
-			/*RubiksCube[RTransform.Up] = new List<RColor>() { RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow };
-			RubiksCube[RTransform.Down] = new List<RColor>() { RColor.White, RColor.White, RColor.White, RColor.White, RColor.White, RColor.White, RColor.White, RColor.White, RColor.White };
-			RubiksCube[RTransform.Left] = new List<RColor>() { RColor.Blue, RColor.Blue, RColor.Blue, RColor.Blue, RColor.Blue, RColor.Blue, RColor.Blue, RColor.Blue, RColor.Blue };
-			RubiksCube[RTransform.Front] = new List<RColor>() { RColor.Red, RColor.Red, RColor.Red, RColor.Red, RColor.Red, RColor.Red, RColor.Red, RColor.Red, RColor.Red };
-			RubiksCube[RTransform.Right] = new List<RColor>() { RColor.Green, RColor.Green, RColor.Green, RColor.Green, RColor.Green, RColor.Green, RColor.Green, RColor.Green, RColor.Green };
-			RubiksCube[RTransform.Back] = new List<RColor>() { RColor.Orange, RColor.Orange, RColor.Orange, RColor.Orange, RColor.Orange, RColor.Orange, RColor.Orange, RColor.Orange, RColor.Orange };*/
-
-			//DEFAULT COLORS
 			RubiksCube[RTransform.Up] = new List<RColor>() { RColor.White, RColor.White, RColor.White, RColor.White, RColor.White, RColor.White, RColor.White, RColor.White, RColor.White };
 			RubiksCube[RTransform.Down] = new List<RColor>() { RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow };
 			RubiksCube[RTransform.Left] = new List<RColor>() { RColor.Orange, RColor.Orange, RColor.Orange, RColor.Orange, RColor.Orange, RColor.Orange, RColor.Orange, RColor.Orange, RColor.Orange };
 			RubiksCube[RTransform.Back] = new List<RColor>() { RColor.Blue, RColor.Blue, RColor.Blue, RColor.Blue, RColor.Blue, RColor.Blue, RColor.Blue, RColor.Blue, RColor.Blue };
 			RubiksCube[RTransform.Right] = new List<RColor>() { RColor.Red, RColor.Red, RColor.Red, RColor.Red, RColor.Red, RColor.Red, RColor.Red, RColor.Red, RColor.Red };
 			RubiksCube[RTransform.Front] = new List<RColor>() { RColor.Green, RColor.Green, RColor.Green, RColor.Green, RColor.Green, RColor.Green, RColor.Green, RColor.Green, RColor.Green };
-			
-			Console.WriteLine("SCRAMBLING...");
 
-			DoMoves(GenerateScramble(1000));
-			PrintCurrentRubiksState();
-			Console.WriteLine(CubeToString(RubiksCube, true));
-
-			Console.WriteLine("GENERATING SOLUTION...");
-
-			System.Diagnostics.Process process = new System.Diagnostics.Process();
-			process.StartInfo = new System.Diagnostics.ProcessStartInfo()
+			while (true)
 			{
-				UseShellExecute = false,
-				CreateNoWindow = false,
-				WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
-				FileName = "python3",
-				Arguments = @$"kociemba.py {CubeToString(RubiksCube, true)}",
-				RedirectStandardError = true,
-				RedirectStandardOutput = true
-			};
-			process.Start();
-			string output = process.StandardOutput.ReadToEnd().Replace(Environment.NewLine, "");
-			process.WaitForExit();
+				Console.WriteLine("SCRAMBLING...");
 
-			Console.WriteLine("SOLUTION: " + output);
+				string scramble = GenerateScramble(30);
 
-			DoMoves(output);
+				Console.WriteLine("SCRAMBLE: " + scramble);
 
-			PrintCurrentRubiksState();
+				DoMoves(scramble);
+				PrintCurrentRubiksState();
+
+				Console.WriteLine("GENERATING SOLUTION...");
+
+				Cube c = new Cube();
+				c.apply(new Move(scramble));
+				Move solve = Search.fullSolve(c, 25);
+
+				Console.WriteLine("SOLUTION: " + solve.ToString());
+
+				DoMoves(solve.ToString());
+
+				PrintCurrentRubiksState();
+			}
 		}
 
 		static string GenerateScramble(int length)
@@ -126,9 +113,10 @@ namespace RubikCubeSolver
 					rmoves.Add(rm);
 					lastmove = rm;
 				}
+				else { i--; }
 			}
 
-			return string.Join(',', rmoves.ToArray());
+			return string.Join(' ', rmoves.ToArray()).Replace("i", "\'");
 		}
 
 		static void DoMoves(string moveString)
@@ -156,8 +144,11 @@ namespace RubikCubeSolver
 				}
 				else
 				{
-					RMove mv = (RMove)Enum.Parse(typeof(RMove), alg[i]);
-					DoMove(mv);
+					if(alg[i] != null)
+					{
+						RMove mv = (RMove)Enum.Parse(typeof(RMove), alg[i]);
+						DoMove(mv);
+					}
 				}
 			}
 		}
@@ -457,74 +448,6 @@ namespace RubikCubeSolver
 					RotateFace(RTransform.Back, true);
 					break;
 			}
-		}
-
-		static string CubeToString(Dictionary<RTransform, List<RColor>> cube, bool kociambaColors = false)
-		{
-			string tmp = "";
-
-			foreach(RTransform t in Enum.GetValues(typeof(RTransform)))
-			{
-				for(int i = 0; i < 9; i++)
-				{
-					tmp += ColorToChar(cube[t][i]);
-				}
-			}
-
-			if (kociambaColors)
-			{
-				string ktmp = "";
-				for(int i = 0; i < tmp.Length; i++)
-				{
-					ktmp += GetKociambaChar(tmp[i]);
-				}
-
-				return ktmp;
-			}
-
-			return tmp;
-		}
-
-		static string ColorToChar(RColor col)
-		{
-			switch (col)
-			{
-				case RColor.White:
-					return "W";
-				case RColor.Yellow:
-					return "Y";
-				case RColor.Green:
-					return "G";
-				case RColor.Blue:
-					return "B";
-				case RColor.Red:
-					return "R";
-				case RColor.Orange:
-					return "O";
-			}
-
-			return "X";
-		}
-
-		static char GetKociambaChar(char c)
-		{
-			switch (c)
-			{
-				case 'W':
-					return 'Y';
-				case 'Y':
-					return 'W';
-				case 'O':
-					return 'B';
-				case 'G':
-					return 'R';
-				case 'R':
-					return 'G';
-				case 'B':
-					return 'O';
-			}
-
-			return ' ';
 		}
 
 		static void RotateFace(RTransform face, bool invert = false)
