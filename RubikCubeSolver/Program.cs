@@ -1,4 +1,5 @@
 ﻿using Pastel;
+using StepperMotorDriver;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -63,8 +64,15 @@ namespace RubikCubeSolver
 
 		public static Dictionary<RTransform, List<RColor>> RubiksCube = new Dictionary<RTransform, List<RColor>>();
 
+		public static StepperDriver UpMotor;
+		public static StepperDriver FrontMotor;
+
 		static void Main(string[] args)
 		{
+			//INITALIZE STEPPER MOTORS
+			UpMotor = new StepperDriver(new int[] { 14, 15, 18, 23 });
+			FrontMotor = new StepperDriver(new int[] { 10, 9, 11, 5 });
+
 			//INITALIZE DEAFULT COLORS
 			RubiksCube[RTransform.Up] = new List<RColor>() { RColor.White, RColor.White, RColor.White, RColor.White, RColor.White, RColor.White, RColor.White, RColor.White, RColor.White };
 			RubiksCube[RTransform.Down] = new List<RColor>() { RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow, RColor.Yellow };
@@ -213,6 +221,32 @@ namespace RubikCubeSolver
 		}
 
 		static void DoMove(RMove move)
+		{
+			SimulationDoMove(move);
+
+			switch (move)
+			{
+				case RMove.U:
+					UpMotor.Rotate(90);
+					break;
+				case RMove.Ui:
+					UpMotor.Rotate(90, false);
+					break;
+				case RMove.F:
+					FrontMotor.Rotate(90);
+					break;
+				case RMove.Fi:
+					FrontMotor.Rotate(90, false);
+					break;
+				default:
+					UpMotor.Rotate(90);
+					break;
+			}
+
+			PrintCurrentRubiksState();
+		}
+
+		static void SimulationDoMove(RMove move)
 		{
 			Dictionary<RTransform, RColor[]> tmp = TransformDict(RubiksCube);
 
